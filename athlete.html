@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Athlete View</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: black;
+    }
+    canvas {
+      display: block;
+      background-color: black;
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="athleteCanvas"></canvas>
+  
+  <script>
+    const canvas = document.getElementById('athleteCanvas');
+    const ctx = canvas.getContext('2d');
+
+    let currentWorkout = "READY";
+    let nextWorkout = "-";
+    let roundsLeft = "0";
+    let timerDisplay = "00:00";
+    let workoutQueue = [];
+    let isWorkoutStarted = false;
+    let activePart = "A";
+
+    // Resizes the canvas to fill the entire window and redraws content
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      draw();
+    }
+
+    // Main drawing function to render all elements on the canvas
+    function draw() {
+      // Clear the entire canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (isWorkoutStarted) {
+        // --- Live Workout View ---
+        // Top Bar - Rounds Left text
+        ctx.font = 'bold 50px sans-serif';
+        ctx.fillStyle = 'yellow';
+        ctx.textAlign = 'left';
+        ctx.fillText(`ROUNDS LEFT: ${roundsLeft}`, 50, 80);
+
+        // Top Bar - Timer display
+        ctx.font = 'bold 120px sans-serif';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'right';
+        ctx.fillText(timerDisplay, canvas.width - 50, 100);
+
+        // Middle Section - Current workout label
+        ctx.font = 'bold 50px sans-serif';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'center';
+        ctx.fillText('CURRENT:', canvas.width / 5, canvas.height / 2.5 - 150);
+
+        // Workout Name Box - this is a large yellow rectangle
+        const boxWidth = canvas.width * 2;
+        const boxHeight = 350;
+        const boxX = (canvas.width - boxWidth) / 2;
+        const boxY = canvas.height / 2 - boxHeight / 2 - 30;
+
+        ctx.fillStyle = 'yellow';
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        
+        // Workout Name Text, centered inside the yellow box
+        ctx.font = 'bold 100px sans-serif';
+        ctx.fillStyle = 'black';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(currentWorkout, canvas.width / 2, boxY + boxHeight / 2);
+        
+        // Next Workout Section - Next workout label
+        ctx.font = 'bold 50px sans-serif';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'alphabetic';
+        ctx.fillText('NEXT:', 50, canvas.height - 100);
+
+        // Next Workout Section - Next workout name
+        ctx.font = 'bold 40px sans-serif';
+        ctx.fillStyle = 'white';
+        ctx.textAlign = 'left';
+        ctx.fillText(nextWorkout, 200, canvas.height - 100);
+        
+      } else {
+        // --- Overview Dashboard View ---
+        drawOverview();
+      }
+      
+      // Footer text
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillStyle = '#888';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText('PLAYGROUND GYM', 50, canvas.height - 10);
+    }
+
+    // Draws the workout overview dashboard
+    function drawOverview() {
+      // Title
+      ctx.font = 'bold 60px sans-serif';
+      ctx.fillStyle = 'yellow';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(`WORKOUT OVERVIEW - PART ${activePart}`, canvas.width / 2, 50);
+
+      // Draw the list of workouts
+      if (workoutQueue.length > 0) {
+        ctx.font = '40px sans-serif';
+        ctx.textAlign = 'left';
+        let yPos = 150;
+        workoutQueue.forEach((workout, index) => {
+          ctx.fillStyle = 'white';
+          ctx.fillText(`${index + 1}.`, 50, yPos);
+          ctx.fillText(workout.name, 120, yPos);
+          ctx.fillStyle = '#888';
+          ctx.fillText(`${workout.time}s`, canvas.width - 150, yPos);
+          yPos += 50;
+        });
+      } else {
+        ctx.font = '40px sans-serif';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'center';
+        ctx.fillText('No workouts added yet.', canvas.width / 2, canvas.height / 2);
+      }
+    }
+
+
+    // Function to read state from local storage and update canvas content
+    function updateFromLocalStorage() {
+      const state = JSON.parse(localStorage.getItem('workoutState'));
+      if (state && state.started) {
+        // Live workout is in progress
+        isWorkoutStarted = true;
+        const roundsText = state.roundsLeftText.split(':')[1].trim();
+        const nextWorkoutText = state.nextWorkoutName.split(': ')[1] || '-';
+        
+        roundsLeft = roundsText;
+        timerDisplay = state.timerBoxText;
+        currentWorkout = state.currentWorkoutName.toUpperCase();
+        nextWorkout = nextWorkoutText.toUpperCase();
+      } else if (state && !state.started) {
+        // Workout not started, show overview
+        isWorkoutStarted = false;
+        activePart = state.activePart;
+        workoutQueue = state.workouts[state.activePart];
+      } else {
+        // No state, show default overview
+        isWorkoutStarted = false;
+        activePart = "A";
+        workoutQueue = [];
+        currentWorkout = 'READY';
+        nextWorkout = '-';
+        roundsLeft = '0';
+        timerDisplay = '00:00';
+      }
+      // Re-draw the canvas with the new data
+      draw();
+    }
+    
+    // Initial setup and event listeners
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('storage', updateFromLocalStorage);
+
+    // Initial draw and a regular interval to ensure smooth updates
+    updateFromLocalStorage();
+    setInterval(updateFromLocalStorage, 1000/60); // 60 FPS update
+  </script>
+</body>
+</html>
